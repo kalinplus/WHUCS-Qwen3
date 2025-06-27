@@ -1,4 +1,5 @@
 from pydantic_settings import  BaseSettings
+import os
 
 class Settings(BaseSettings):
     # vLLM OpenAI格式兼容 API 端口
@@ -9,7 +10,7 @@ class Settings(BaseSettings):
 
     # 嵌入模型配置
     EMBEDDING_MODEL_NAME: str = "moka-ai/m3e-base"
-    EMBEDDING_MODEL_DIR: str = "/root/autodl-tmp/AI-ModelScope/all-MiniLM-L6-v2"
+    EMBEDDING_MODEL_DIR: str = "/root/autodl-tmp/AI-ModelScope/m3e-base"
 
     # 向量数据库配置
     VECTOR_DB_PATH: str = "/root/autodl-tmp/chroma_db"
@@ -18,8 +19,16 @@ class Settings(BaseSettings):
 
     # Redis 连接配置
     REDIS_HOST: str = "8.141.92.242"
-    REDIS_PORT: str = "6379"
-    REDIS_PASSWORD: str = "admin"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = "_pwdForRedis1"
+    REDIS_STREAM_NAME: str = "rag_sync_stream"
+    REDIS_CONSUMER_GROUP_NAME: str = "rag_sync_consumer_group0"
+    REDIS_CONSUMER_NAME: str = f"sync-worker-{os.uname().nodename}-{os.getpid()}"  # 动态生成消费者名称
+    REDIS_MESSAGES_PER_PULL: int = 10
+    REDIS_BLOCK_TIMEOUT_MS: int = 10000
+
+    # 日志配置
+    LOG_LEVEL: str = "ERROR"
 
 # 读取配置
 settings = Settings()
