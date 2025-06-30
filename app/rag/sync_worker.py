@@ -4,12 +4,20 @@ import time
 from typing import List, Dict, Tuple
 
 from redis import Redis, exceptions
+from langchain.text_splitter import RecursiveCharacterTextSplitter  # 导入文本分割器
 
 from app.configs.config import settings
 from app.rag.rag_service import get_embeddings
-from app.utils.singleton import chroma_collection, redis_pool, logger  # 从工具文件中引入向量数据库集合 和 redis连接池
+from app.utils.singleton import chroma_collection, redis_pool, logger
 
 SHUTDOWN_REQUESTED = False
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=settings.CHUNK_SIZE,
+    chunk_overlap=settings.CHUNK_OVERLAP,
+    separators=["\n\n", "\n", "。", "，", "、", " "],
+    length_function=len
+)
 
 
 def handle_shutdown(signum, frame):
@@ -21,66 +29,66 @@ def handle_shutdown(signum, frame):
 
 
 def sanitize_metadata_value(value):
-    """
-    【工具函数】
-    如果值是列表或字典，将其JSON序列化为字符串。
-    否则，按原样返回。
-    """
+    """【工具函数】如果值是列表或字典，将其JSON序列化为字符串。"""
     if isinstance(value, (list, dict)):
         try:
-            # 使用紧凑的格式，不带不必要的空格
             return json.dumps(value, ensure_ascii=False, separators=(',', ':'))
         except TypeError:
-            # 如果JSON序列化失败，将其转换为字符串作为最后的保障
             return str(value)
     return value
 
 
-# 批量消息处理
 def process_messages_batch(messages: List[Tuple[str, Dict[str, str]]]):
-    """一次性处理一批消息，以提高效率"""
+    """
+    一次性处理一批消息。
+    对每条消息中的大文档进行切分，然后将所有切分出的文本块统一进行向量化和存储。
+    """
     first_msg_id = messages[0][0]
     last_msg_id = messages[-1][0]
     logger.debug(f"Parsing batch of {len(messages)} messages from {first_msg_id} to {last_msg_id}.")
+
+    # 这些列表现在将包含切分后的所有文本块（chunks）的数据
     batch_ids, batch_embeddings, batch_metadatas, batch_documents = [], [], [], []
-    processed_msg_ids = []
 
     for msg_id, msg_data in messages:
         try:
             data = json.loads(msg_data['data'])
+            # 这里我们仍然使用 source_id 作为文档的唯一标识符
             source_id = "dynamic::" + data.get('source_id')
             content = data.get('content')
 
-            # 这里是正常实现
             if not all([source_id, content]):
                 raise ValueError("Message is missing 'source_id' or 'content'")
-            batch_ids.append(source_id)
 
-            # FIX: 以下是测试内容，测试完毕请删除
-            # if not content: # 在这个临时版本中，我们只关心content
-            #     raise ValueError("Message is missing 'content'")
-            # random_id = str(uuid.uuid4())
-            # batch_ids.append(random_id)
+            # 1. 对文档内容进行切分
+            chunks = text_splitter.split_text(content)
+            logger.debug(f"Document {source_id} was split into {len(chunks)} chunks.")
 
-            raw_metadata = data.get('metadata', {})
-            sanitized_metadata = {
-                key: sanitize_metadata_value(value) for key, value in raw_metadata.items()
-            }
+            # 2. 为每个切分出的文本块准备数据
+            sanitized_metadata = {key: sanitize_metadata_value(value) for key, value in
+                                  data.get('metadata', {}).items()}
 
-            # 以下不动
-            batch_documents.append(content)
-            batch_metadatas.append(sanitized_metadata)
-            processed_msg_ids.append(msg_id)
+            for i, chunk_content in enumerate(chunks):
+                # 为每个 chunk 创建一个唯一的 ID，格式为 "原始ID::chunk::序号"
+                # 这使得每个 chunk 都有唯一ID，同时保持了与源文档的关联性。
+                chunk_id = f"{source_id}::chunk::{i}"
 
+                batch_ids.append(chunk_id)
+                batch_documents.append(chunk_content)
+                # 所有来自同一源文档的 chunk 共享相同的元数据
+                batch_metadatas.append(sanitized_metadata)
 
         except Exception as e:
-            logger.error(f"Failed to parse message. Error: {e}", extra={"msg_id": msg_id})
+            logger.error(f"Failed to parse or chunk message. Error: {e}", extra={"msg_id": msg_id})
 
+    # 如果所有消息都处理失败（例如都是空内容），则直接返回
     if not batch_documents:
-        return []  # 如果所有消息都解析失败，直接返回
+        # ACK这批消息以防止“毒丸消息”阻塞队列
+        all_ids_to_ack = [msg_id for msg_id, _ in messages]
+        return all_ids_to_ack
 
     try:
-        # 批量向量化
+        # 批量向量化所有切分出的文本块
         batch_embeddings = get_embeddings(batch_documents)
 
         # 批量写入向量数据库
@@ -90,18 +98,19 @@ def process_messages_batch(messages: List[Tuple[str, Dict[str, str]]]):
             metadatas=batch_metadatas,
             documents=batch_documents
         )
-        logger.info(f"Successfully processed and upserted a batch of {len(batch_ids)} messages.")
-        return processed_msg_ids
+        logger.info(f"Successfully processed and upserted {len(batch_ids)} chunks from {len(messages)} messages.")
+
+        # 返回所有被成功处理的原始消息ID，以便ACK
+        return [msg_id for msg_id, _ in messages]
 
     except Exception as e:
-        logger.error(f"Failed to process batch. Error: {e}", extra={"msg_id": "batch_operation"})
-        return []  # 批量处理失败，这批消息都算失败
+        logger.error(f"Failed to process batch embeddings/upsert. Error: {e}", extra={"msg_id": "batch_operation"})
+        return []  # 批量处理失败，这批消息都算失败，不进行ACK
 
 
-# 主运行循环
 def run_sync_worker():
+    """主运行循环"""
     r = Redis(connection_pool=redis_pool)
-    # 确保 Stream 和消费者组存在
     try:
         r.xgroup_create(
             name=settings.REDIS_STREAM_NAME,
@@ -115,7 +124,6 @@ def run_sync_worker():
 
     while not SHUTDOWN_REQUESTED:
         try:
-            # 从 Stream 拉取一批新消息
             messages = r.xreadgroup(
                 groupname=settings.REDIS_CONSUMER_GROUP_NAME,
                 consumername=settings.REDIS_CONSUMER_NAME,
@@ -125,28 +133,24 @@ def run_sync_worker():
             )
             if not messages:
                 continue
-            # messages[0][0] 是 stream name, messages[0][1] 是消息列表
+
             message_list = messages[0][1]
+            # 批量处理消息
+            successfully_processed_original_msg_ids = process_messages_batch(message_list)
 
-            # 调用批量处理函数
-            successfully_processed_ids = process_messages_batch(message_list)
-
-            # 只ACK成功处理的消息，或全部ACK，取决于业务需求。这里选择全部ACK以防止毒丸消息
-            all_ids_to_ack = [msg_id for msg_id, _ in message_list]
-            if all_ids_to_ack:
-                r.xack(settings.REDIS_STREAM_NAME, settings.REDIS_CONSUMER_GROUP_NAME, *all_ids_to_ack)
+            # 只ACK成功处理的原始消息ID
+            if successfully_processed_original_msg_ids:
+                r.xack(settings.REDIS_STREAM_NAME, settings.REDIS_CONSUMER_GROUP_NAME,
+                       *successfully_processed_original_msg_ids)
         except exceptions.ConnectionError as e:
-            # 对于连接错误，打印日志并等待一段时间后重试
             logger.error(f"Redis connection error: {e}. Retrying in 5 seconds...", extra={'msg_id': 'N/A'})
             time.sleep(5)
         except Exception as e:
-            # 对于其他未知循环错误，同样记录并重试
             logger.error(f"An unexpected error occurred in the main loop: {e}", extra={'msg_id': 'N/A'})
             time.sleep(5)
 
 
 if __name__ == "__main__":
-    # 注册信号处理器
     signal.signal(signal.SIGINT, handle_shutdown)
     signal.signal(signal.SIGTERM, handle_shutdown)
 
