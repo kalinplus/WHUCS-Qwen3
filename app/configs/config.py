@@ -39,6 +39,5 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "DEBUG"
 
-
 # 读取配置
 settings = Settings()
