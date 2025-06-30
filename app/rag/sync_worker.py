@@ -74,6 +74,9 @@ def process_messages_batch(messages: List[Tuple[str, Dict[str, str]]]):
             raw_metadata = json.loads(metadata_str) if metadata_str.strip() else {}
             sanitized_metadata = {key: sanitize_metadata_value(value) for key, value in raw_metadata.items()}
 
+            if not sanitized_metadata:
+                sanitized_metadata['source'] = source_id_base
+
             # 为每个切分出的文本块准备数据
             for i, chunk_content in enumerate(chunks):
                 chunk_id = f"{source_id}::chunk::{i}"
