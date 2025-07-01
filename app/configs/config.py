@@ -1,12 +1,13 @@
 import os
-
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
+load_dotenv()
 
 class Settings(BaseSettings):
     # vLLM OpenAI格式兼容 API 端口
     VLLM_API_URL: str = "http://localhost:8010/v1/chat/completions"
-    VLLM_API_KEY: str = "sk-xxx"  # 离线部署随便写一个，只是需要它来通过 api key 的验证
+    VLLM_API_KEY: str = os.getenv('VLLM_API_KEY')
     VLLM_MODEL_NAME: str = "Qwen3-8B-AWQ"
     VLLM_MODEL_DIR: str = "/root/autodl-tmp/Qwen/Qwen3-8B-AWQ"
 
@@ -27,9 +28,9 @@ class Settings(BaseSettings):
     RAG_N_RESULT: int = 5  # rag 检索 top-k
 
     # Redis 连接配置
-    REDIS_HOST: str = "8.141.92.242"
+    REDIS_HOST: str = os.getenv('REDIS_HOST')
     REDIS_PORT: int = 6379
-    REDIS_PASSWORD: str = "_pwdForRedis1"
+    REDIS_PASSWORD: str = os.getenv('REDIS_PASSWORD')
     REDIS_STREAM_NAME: str = "rag_sync_stream"
     REDIS_CONSUMER_GROUP_NAME: str = "rag_sync_consumer_group0"
     REDIS_CONSUMER_NAME: str = f"sync-worker-{os.uname().nodename}-{os.getpid()}"  # 动态生成消费者名称
