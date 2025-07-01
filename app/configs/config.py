@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     # vLLM OpenAI格式兼容 API 端口
     VLLM_API_URL: str = "http://localhost:8010/v1/chat/completions"
     VLLM_API_KEY: str = "sk-xxx"  # 离线部署随便写一个，只是需要它来通过 api key 的验证
-    VLLM_MODEL_NAME: str = "Qwen3-8B"
-    VLLM_MODEL_DIR: str = "/root/autodl-tmp/Qwen/Qwen3-8B"
+    VLLM_MODEL_NAME: str = "Qwen3-8B-AWQ"
+    VLLM_MODEL_DIR: str = "/root/autodl-tmp/Qwen/Qwen3-8B-AWQ"
 
     # 嵌入模型配置
     EMBEDDING_MODEL_NAME: str = "moka-ai/m3e-base"
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     CHROMA_SERVER_SSL: bool = False  # 是否启用 HTTPS
     CHROMA_RAG_COLLECTION_NAME: str = "club_management_rag"
     STATIC_DOC_PATH: str = "/root/autodl-tmp/static_doc"
-    RAG_N_RESULT: int = 3  # rag 检索 top-k
+    RAG_N_RESULT: int = 5  # rag 检索 top-k
 
     # Redis 连接配置
     REDIS_HOST: str = "8.141.92.242"
