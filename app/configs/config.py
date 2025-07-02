@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     REDIS_MESSAGES_PER_PULL: int = 64
     REDIS_BLOCK_TIMEOUT_MS: int = 10000
 
+    # FastAPI port
+    FASTAPI_PORT: int = 8000
+
     # 日志配置
     LOG_LEVEL: str = "DEBUG"
 
