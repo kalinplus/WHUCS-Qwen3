@@ -44,5 +44,10 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "DEBUG"
 
+    # RAGAS
+    DEEPSEEK_API_URL="https://api.deepseek.com"
+    DEEPSEEK_API_KEY=os.getenv('DEEPSEEK_API_KEY')
+    DEEPSEEK_MODEL='deepseek-chat'
+
 # 读取配置
 settings = Settings()
