@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # 嵌入模型配置
     EMBEDDING_MODEL_NAME: str = "moka-ai/m3e-base"
     EMBEDDING_MODEL_DIR: str = "/root/autodl-tmp/AI-ModelScope/m3e-base"
-    SIMILARITY_THRESHOLD: float = 0.75  # 使用嵌入模型进行上下文压缩的相似度阈值
+    SIMILARITY_THRESHOLD: float = 0.6  # 使用嵌入模型进行上下文压缩的相似度阈值
 
     # 文本切分器配置
     CHUNK_SIZE: int = 300
