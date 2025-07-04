@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     VLLM_MODEL_NAME: str = "Qwen3-8B-AWQ"
     VLLM_MODEL_DIR: str = "/root/autodl-tmp/Qwen/Qwen3-8B-AWQ"
 
+    VLLM_LORA_NAME: str = "Qwen-8B-AWQ-LoRA"
+    VLLM_LORA_DIR: str = "/root/autodl-tmp/Qwen/Qwen3-8B-AWQ-LoRA"
+    VLLM_LORA_ID: int = 0
+
     # 嵌入模型配置
     EMBEDDING_MODEL_NAME: str = "moka-ai/m3e-base"
     EMBEDDING_MODEL_DIR: str = "/root/autodl-tmp/AI-ModelScope/m3e-base"
