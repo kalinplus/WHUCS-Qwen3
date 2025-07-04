@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple
 from redis import Redis, exceptions
 
 from app.configs.config import settings
-from app.rag.rag_service import get_embeddings
+from app.rag.mcp_rag_service import get_embeddings
 from app.utils.singleton import chroma_collection, redis_pool, logger  # 从工具文件中引入向量数据库集合 和 redis连接池
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
