@@ -44,15 +44,15 @@ class Settings(BaseSettings):
 
     # FastAPI port
     FASTAPI_PORT: int = 8000
-    INTERNAL_RAG_PORT: int = 8010
-    INTERNAL_RAG_API_URL: int = "http://127.0.0.1:8010"
+    INTERNAL_RAG_PORT: int = 8020
+    INTERNAL_RAG_API_URL: str = "http://127.0.0.1:8020"
 
     # 日志配置
     LOG_LEVEL: str = "DEBUG"
 
     # RAGAS
-    DEEPSEEK_API_URL: str ="https://api.deepseek.com/v1"
-    DEEPSEEK_API_KEY: str =os.getenv('DEEPSEEK_API_KEY')
+    DEEPSEEK_API_URL: str ="https://tbai.xin/v1"
+    DEEPSEEK_API_KEY: str =os.getenv('DEEPSEEK_API_KEY1')
     DEEPSEEK_MODEL: str ='deepseek-chat'
 
 # 读取配置
