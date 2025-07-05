@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple
 from redis import Redis, exceptions
 
 from app.configs.config import settings
-from app.rag.mcp_rag_service import get_embeddings
+from app.utils.singleton import retriever
 from app.utils.singleton import chroma_collection, redis_pool, logger  # 从工具文件中引入向量数据库集合 和 redis连接池
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -95,7 +95,7 @@ def process_messages_batch(messages: List[Tuple[str, Dict[str, str]]]):
 
     try:
         # 批量向量化所有切分出的文本块
-        batch_embeddings = get_embeddings(batch_documents)
+        batch_embeddings = retriever.get_embeddings(batch_documents)
 
         # 批量写入向量数据库
         chroma_collection.upsert(

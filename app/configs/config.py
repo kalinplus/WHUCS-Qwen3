@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # 向量数据库配置
     CHROMA_SERVER_HOST: str = "127.0.0.1"
-    CHROMA_SERVER_PORT: int = 8040
+    CHROMA_SERVER_PORT: int = 8030
     CHROMA_SERVER_SSL: bool = False  # 是否启用 HTTPS
     CHROMA_RAG_COLLECTION_NAME: str = "club_management_rag"
     STATIC_DOC_PATH: str = "/root/autodl-tmp/static_doc"
